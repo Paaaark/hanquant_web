@@ -4,6 +4,8 @@ class StockSummary {
   final String stockCode;
   final String changePercentage;
   final String currentPrice;
+  final String volume;
+  final String marketCap;
 
   StockSummary({
     required this.logoUrl,
@@ -11,5 +13,7 @@ class StockSummary {
     required this.stockCode,
     required this.changePercentage,
     required this.currentPrice,
+    required this.volume,
+    required this.marketCap,
   });
 }

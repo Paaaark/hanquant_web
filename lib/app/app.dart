@@ -33,7 +33,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    HomePage(),
+    const HomePage(),
     const MarketPage(),
     const PortfolioPage(),
     const StrategyPage(),

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
 import 'package:hanquant_frontend/models/index_summary.dart';
 import 'package:hanquant_frontend/models/stock_summary.dart';
 import 'package:hanquant_frontend/services/api_service.dart';
@@ -12,15 +16,23 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<List<IndexSummary>> _indicesFuture;
-  late Future<List<StockSummary>> _trendingStocksFuture;
+  late Future<void> _allTrendingStocksFuture;
 
   final List<String> _indexCodes = ['0001', '1001', '4001'];
+
+  // Trening stock filter options
+  final List<String> _filterOptions = ['Volume', 'Fluctuation', 'Market Cap'];
+  String _selectedFilter = 'Volume';
+
+  List<StockSummary> _volumeStocks = [];
+  List<StockSummary> _fluctuationStocks = [];
+  List<StockSummary> _marketCapStocks = [];
 
   @override
   void initState() {
     super.initState();
     _indicesFuture = _fetchIndices();
-    _trendingStocksFuture = ApiService.fetchTrendingStocks();
+    _allTrendingStocksFuture = _fetchAllTrendingStocks();
   }
 
   Future<List<IndexSummary>> _fetchIndices() async {
@@ -34,6 +46,30 @@ class _HomePageState extends State<HomePage> {
     return results;
   }
 
+  Future<void> _fetchAllTrendingStocks() async {
+    final volume = await ApiService.fetchTopTrendingStocks("volume");
+    final fluctuation = await ApiService.fetchTopTrendingStocks("fluctuation");
+    final marketCap = await ApiService.fetchTopTrendingStocks("market-cap");
+
+    setState(() {
+      _volumeStocks = volume;
+      _fluctuationStocks = fluctuation;
+      _marketCapStocks = marketCap;
+    });
+  }
+
+  List<StockSummary> get _currentStocks {
+    switch (_selectedFilter) {
+      case 'Fluctuation':
+        return _fluctuationStocks;
+      case 'Market Cap':
+        return _marketCapStocks;
+      case 'Volume':
+      default:
+        return _volumeStocks;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -43,19 +79,48 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Market Summary",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             _buildMarketSummary(),
             const SizedBox(height: 24),
-            const Text("Trending Stocks",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            _buildTrendingStocks(),
+            _trendingStocks(),
           ],
         ),
       ),
     );
+  }
+
+  Widget _trendingStocks() {
+    return SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(3.0, 5.0, 3.0, 5.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              const Text(
+                "Trending Stocks",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              DropdownButton<String>(
+                value: _selectedFilter,
+                items: _filterOptions
+                    .map((option) => DropdownMenuItem(
+                          value: option,
+                          child: Text(option),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null && value != _selectedFilter) {
+                    setState(() {
+                      _selectedFilter = value;
+                    });
+                  }
+                },
+              )
+            ]),
+            const SizedBox(height: 12),
+            _buildTrendingStocks()
+          ],
+        ));
   }
 
   Widget _buildMarketSummary() {
@@ -87,27 +152,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTrendingStocks() {
-    return FutureBuilder<List<StockSummary>>(
-        future: _trendingStocksFuture,
+    return FutureBuilder<void>(
+        future: _allTrendingStocksFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Text('Error loading trending stocks: ${snapshot.error}');
-          } else if (snapshot.hasData) {
-            final stocks = snapshot.data!;
+          } else {
             return ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: stocks.length,
+              itemCount: _currentStocks.length,
               separatorBuilder: (_, __) => const Divider(height: 16),
-              itemBuilder: (cotext, index) {
-                final stock = stocks[index];
-                return _StockListItem(stock: stock);
+              itemBuilder: (context, index) {
+                return _StockListItem(stock: _currentStocks[index]);
               },
             );
-          } else {
-            return const Text('No trending stocks data available');
           }
         });
   }
@@ -119,6 +180,13 @@ class _IndexCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formattedPrice =
+        NumberFormat('#,###.##').format(double.parse(index.currentPrice));
+    final formattedHigh =
+        NumberFormat('#,###.##').format(double.parse(index.high));
+    final formattedLow =
+        NumberFormat('#,###.##').format(double.parse(index.low));
+
     return Container(
       width: 160,
       padding: const EdgeInsets.all(12),
@@ -150,10 +218,10 @@ class _IndexCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text('${index.currentPrice}₩', style: const TextStyle(fontSize: 14)),
-          Text('High: ${index.high}₩',
+          Text('$formattedPrice ₩', style: const TextStyle(fontSize: 15)),
+          Text('High: $formattedHigh ₩',
               style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Text('Low: ${index.low}₩',
+          Text('Low: $formattedLow ₩',
               style: const TextStyle(fontSize: 12, color: Colors.grey)),
         ],
       ),
@@ -168,26 +236,57 @@ class _StockListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPositive = stock.changePercentage.startsWith('+');
+    final formattedPrice =
+        NumberFormat('#,###').format(double.parse(stock.currentPrice));
+
     return ListTile(
-      leading: CircleAvatar(
-        backgroundImage: NetworkImage(
-            'https://logo.synthfinance.com/ticker/${stock.stockCode}'),
-        child: null,
-      ),
-      title: Text(stock.stockName),
+      leading: buildAvatar(stock.stockCode, stock.stockName),
+      title:
+          Text(stock.stockName, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(stock.stockCode),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text('${stock.currentPrice}₩',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text('$formattedPrice ₩', style: const TextStyle(fontSize: 16)),
           Text(
             '${stock.changePercentage}%',
-            style: TextStyle(color: isPositive ? Colors.green : Colors.red),
+            style: TextStyle(
+                color: isPositive ? Colors.green : Colors.red, fontSize: 13),
           ),
         ],
       ),
     );
   }
+}
+
+Widget buildAvatar(String stockCode, String stockName) {
+  final url = 'https://logo.synthfinance.com/ticker/$stockCode';
+
+  return FutureBuilder<http.Response>(
+    future: http.get(Uri.parse(url)),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.done &&
+          snapshot.hasData &&
+          snapshot.data!.statusCode == 200) {
+        final contentType = snapshot.data!.headers['content-type'] ?? '';
+
+        if (contentType.contains('image/svg')) {
+          return CircleAvatar(
+            backgroundColor: Colors.transparent,
+            child:
+                SizedBox(width: 32, height: 32, child: SvgPicture.network(url)),
+          );
+        } else {
+          return CircleAvatar(
+            child: Text(stockName[0]),
+          );
+        }
+      } else {
+        return CircleAvatar(
+          child: Text(stockName[0]),
+        );
+      }
+    },
+  );
 }

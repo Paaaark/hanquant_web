@@ -16,11 +16,11 @@ class ApiService {
 
       return IndexSummary(
         indexName: data['IndexName'] ?? '',
-        changeRate: data['bstp_nmix_prdy_ctrt'] ?? '',
-        isChangePositive: data["prdy_vrss_sign"] == "1" ? true : false,
-        currentPrice: data['bstp_nmix_prpr'] ?? '',
-        high: data['bstp_nmix_hgpr'] ?? '',
-        low: data['bstp_nmix_lwpr'] ?? '',
+        changeRate: data['ChangeRate'] ?? '',
+        isChangePositive: data["ChangeFromPrev"][0] != '-' ? true : false,
+        currentPrice: data['CurrentPrice'] ?? '',
+        high: data['High'] ?? '',
+        low: data['Low'] ?? '',
       );
     } else {
       throw Exception('Failed to load index data');
@@ -28,9 +28,11 @@ class ApiService {
   }
 
   // Fetch trending stocks (limit 10)
-  static Future<List<StockSummary>> fetchTrendingStocks() async {
+  // metric: fluctuation, volume, market-cap
+  static Future<List<StockSummary>> fetchTopTrendingStocks(
+      String metric) async {
     final url =
-        Uri.parse('$_baseUrl/ranking/fluctuation'); // Adjust endpoint as needed
+        Uri.parse('$_baseUrl/ranking/$metric'); // Adjust endpoint as needed
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -39,10 +41,12 @@ class ApiService {
       return jsonList.take(10).map((jsonStock) {
         return StockSummary(
           logoUrl: '', // Add if available
-          stockName: jsonStock['hts_kor_isnm'] ?? '',
-          stockCode: jsonStock['stck_shrn_iscd'] ?? '',
-          changePercentage: jsonStock['prdy_ctrt'] ?? '',
-          currentPrice: jsonStock['stck_prpr'] ?? '',
+          stockName: jsonStock['Name'] ?? '',
+          stockCode: jsonStock['Code'] ?? '',
+          changePercentage: jsonStock['ChangeRate'] ?? '',
+          currentPrice: jsonStock['Price'] ?? '',
+          volume: jsonStock['Volume'] ?? '',
+          marketCap: jsonStock['MarketCap'] ?? '',
         );
       }).toList();
     } else {
