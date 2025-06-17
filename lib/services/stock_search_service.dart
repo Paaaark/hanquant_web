@@ -23,8 +23,14 @@ class StockSearchService {
           const CsvToListConverter().convert(csvData);
 
       _stockListings = rows.skip(1).map((row) {
+        // Parse market cap with fallback to 0.0
+        double parseMarketCap(dynamic value) {
+          if (value == null) return 0.0;
+          return double.tryParse(value.toString()) ?? 0.0;
+        }
+
         final stock = StockListing(
-          code: row[0].toString(),
+          code: row[0].toString(), // Keep as string to preserve leading zeros
           isin: row[1].toString(),
           name: row[2].toString(),
           securityType: row[3].toString(),
@@ -32,7 +38,7 @@ class StockSearchService {
           indLarge: row[5].toString(),
           indMedium: row[6].toString(),
           indSmall: row[7].toString(),
-          market: row.length > 8 ? row[8].toString() : '1',
+          marketCap: parseMarketCap(row[8]),
         );
         return stock;
       }).toList();
@@ -66,18 +72,30 @@ class StockSearchService {
               stock.isin.toLowerCase(), normalizedQuery);
 
           final stringScore = max(max(nameScore, codeScore), isinScore);
-          final capSizeScore = _getCapSizeScore(stock.capSize);
-          final securityTypeScore = _getSecurityTypeScore(stock.securityType);
+          final groupCodeScore = _getGroupCodeScore(stock.securityType);
 
-          final totalScore = (stringScore * 0.6) +
-              (capSizeScore * 0.25) +
-              (securityTypeScore * 0.15);
-
-          return _SearchResult(stock: stock, score: totalScore);
+          return _SearchResult(
+            stock: stock,
+            stringScore: stringScore,
+            groupCodeScore: groupCodeScore,
+            marketCap: stock.marketCap,
+          );
         })
-        .where((result) => result.score > 0.3)
+        .where((result) => result.stringScore > 0.3)
         .toList()
-      ..sort((a, b) => b.score.compareTo(a.score));
+      ..sort((a, b) {
+        final similarityCompare = b.stringScore.compareTo(a.stringScore);
+        if (similarityCompare != 0) return similarityCompare;
+
+        final groupCodeCompare = b.groupCodeScore.compareTo(a.groupCodeScore);
+        if (groupCodeCompare != 0) return groupCodeCompare;
+
+        return b.marketCap.compareTo(a.marketCap);
+      });
+
+    results.forEach((r) {
+      print('${r.stock.code} (${r.stock.name}): marketCap=${r.marketCap}');
+    });
 
     return results.map((r) => r.stock).toList();
   }
@@ -99,35 +117,28 @@ class StockSearchService {
     return commonChars / max(chars1.length, chars2.length);
   }
 
-  double _getCapSizeScore(String capSize) {
-    switch (capSize) {
-      case '1':
-        return 3.0; // Large cap
-      case '2':
-        return 2.0; // Mid cap
-      case '3':
-      default:
-        return 1.0; // Small cap or invalid
-    }
-  }
-
-  double _getSecurityTypeScore(String securityType) {
+  double _getGroupCodeScore(String securityType) {
     switch (securityType) {
       case 'ST': // 주권
       case 'EF': // ETF
       case 'EW': // ELW
-        return 3.0; // Most common/preferred types
-      case 'DR': // 주식예탁증서
-        return 2.0;
+        return 3.0; // Highest priority
       default:
-        return 1.0; // Less common types
+        return 1.0; // Lower priority
     }
   }
 }
 
 class _SearchResult {
   final StockListing stock;
-  final double score;
+  final double stringScore;
+  final double groupCodeScore;
+  final double marketCap;
 
-  _SearchResult({required this.stock, required this.score});
+  _SearchResult({
+    required this.stock,
+    required this.stringScore,
+    required this.groupCodeScore,
+    required this.marketCap,
+  });
 }

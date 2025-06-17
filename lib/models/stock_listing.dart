@@ -7,7 +7,7 @@ class StockListing {
   final String indLarge;
   final String indMedium;
   final String indSmall;
-  final String market;
+  final double marketCap; // Market cap in hundred million KRW
 
   StockListing({
     required this.code,
@@ -18,7 +18,7 @@ class StockListing {
     required this.indLarge,
     required this.indMedium,
     required this.indSmall,
-    this.market = '1', // Default to main market
+    required this.marketCap,
   });
 
   // Helper getter for market cap score (higher is better)
@@ -53,8 +53,14 @@ class StockListing {
   int get relevanceScore => marketCapScore + securityTypeScore;
 
   factory StockListing.fromCsv(List<String> row) {
+    // Parse market cap with fallback to 0.0
+    double parseMarketCap(String? value) {
+      if (value == null || value.isEmpty) return 0.0;
+      return double.tryParse(value) ?? 0.0;
+    }
+
     return StockListing(
-      code: row[0],
+      code: row[0], // Keep as string to preserve leading zeros
       isin: row[1],
       name: row[2],
       securityType: row[3],
@@ -62,7 +68,7 @@ class StockListing {
       indLarge: row[5],
       indMedium: row[6],
       indSmall: row[7],
-      market: row.length > 8 ? row[8] : '1', // Handle missing market column
+      marketCap: parseMarketCap(row[8]),
     );
   }
 
