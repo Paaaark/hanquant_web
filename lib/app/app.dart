@@ -4,6 +4,7 @@ import '../pages/market/market_page.dart';
 import '../pages/strategy/strategy_page.dart';
 import '../pages/portfolio/portfolio_page.dart';
 import '../pages/profile/profile_page.dart';
+import 'routes.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -17,6 +18,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const MainScaffold(),
+      routes: AppRoutes.routes,
       debugShowCheckedModeBanner: false,
     );
   }

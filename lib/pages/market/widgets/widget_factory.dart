@@ -6,7 +6,10 @@ class WidgetFactory {
   static Widget buildPreview(MarketWidgetModel model) {
     switch (model.type) {
       case WidgetType.watchlist:
-        return WatchlistWidget(config: model.config);
+        return WatchlistWidget(
+          id: model.id,
+          config: model.config,
+        );
       // Add more widget types as needed
       default:
         return const Text('Unknown widget type');

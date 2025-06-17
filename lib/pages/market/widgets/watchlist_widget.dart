@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 class WatchlistWidget extends StatelessWidget {
+  final String id;
   final Map<String, dynamic> config;
   final VoidCallback? onSettingsPressed;
 
   const WatchlistWidget({
     Key? key,
+    required this.id,
     required this.config,
     this.onSettingsPressed,
   }) : super(key: key);
@@ -15,21 +17,14 @@ class WatchlistWidget extends StatelessWidget {
     // List of ticker symbols to show
     final symbols = (config['symbols'] as List<String>?) ?? ['AAPL', 'GOOG'];
 
-    // Map from symbol → list of info strings (up to 5 total)
-    final infoMap = (config['info'] as Map<String, List<String>>?) ?? {};
+    // List of info fields to display
+    final infoFields = (config['info'] as List<String>?) ?? [];
 
     return Stack(
       children: [
         // Main content: vertical list of tickers
         Column(
           children: symbols.map<Widget>((symbol) {
-            // Fetch up to 5 info items for this symbol
-            final allInfo = (infoMap[symbol] ?? []).take(5).toList();
-
-            final firstTwo = allInfo.take(2).toList();
-            final nextThree = allInfo.skip(2).take(3).toList();
-            final trailingTwo = allInfo.skip(5).take(2).toList();
-
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: ListTile(
@@ -44,7 +39,7 @@ class WatchlistWidget extends StatelessWidget {
                       style: Theme.of(context).textTheme.subtitle1,
                     ),
                     const SizedBox(width: 8),
-                    for (final info in firstTwo) ...[
+                    for (final info in infoFields.take(2)) ...[
                       Flexible(
                         child: Text(
                           info,
@@ -57,12 +52,12 @@ class WatchlistWidget extends StatelessWidget {
                   ],
                 ),
                 // Subtitle row: up to 3 info items
-                subtitle: nextThree.isNotEmpty
+                subtitle: infoFields.length > 2
                     ? Padding(
                         padding: const EdgeInsets.only(top: 4.0),
                         child: Row(
                           children: [
-                            for (final info in nextThree) ...[
+                            for (final info in infoFields.skip(2).take(3)) ...[
                               Flexible(
                                 child: Text(
                                   info,
@@ -74,21 +69,6 @@ class WatchlistWidget extends StatelessWidget {
                             ],
                           ],
                         ),
-                      )
-                    : null,
-                // Trailing: up to 2 extra info items on the right
-                trailing: trailingTwo.isNotEmpty
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: trailingTwo.map((info) {
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: Text(
-                              info,
-                              style: Theme.of(context).textTheme.bodyText2,
-                            ),
-                          );
-                        }).toList(),
                       )
                     : null,
               ),
@@ -103,7 +83,13 @@ class WatchlistWidget extends StatelessWidget {
           child: IconButton(
             icon: const Icon(Icons.settings, size: 20),
             splashRadius: 20,
-            onPressed: onSettingsPressed,
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/watchlist-edit',
+                arguments: id,
+              );
+            },
           ),
         ),
       ],
