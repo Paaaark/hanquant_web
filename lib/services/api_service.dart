@@ -4,7 +4,7 @@ import '../models/index_summary.dart';
 import '../models/stock_summary.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://192.168.45.8:8081';
+  static const _baseUrl = 'http://192.168.45.186:8080';
 
   // Fetch index summary by index code
   static Future<IndexSummary> fetchIndexSummary(String indexCode) async {

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:provider/provider.dart' as provider;
 import 'app/app.dart';
 import 'package:hanquant_frontend/models/market_widget_model.dart';
+import 'providers/stock_data_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,7 +14,14 @@ Future<void> main() async {
   Hive.registerAdapter(MarketWidgetModelAdapter());
   await Hive.openBox('market_widgets');
 
-  runApp(const ProviderScope(
-    child: MyApp(),
-  ));
+  runApp(
+    provider.MultiProvider(
+      providers: [
+        provider.ChangeNotifierProvider(create: (_) => StockDataProvider()),
+      ],
+      child: const ProviderScope(
+        child: MyApp(),
+      ),
+    ),
+  );
 }

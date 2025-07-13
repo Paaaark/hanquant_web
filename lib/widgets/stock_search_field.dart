@@ -83,7 +83,7 @@ class _StockSearchFieldState extends State<StockSearchField> {
   void _onStockSelected(StockListing stock) {
     print(
         'StockSearchField: Selected stock ${stock.code} - ${stock.name}'); // Debug log
-    _controller.text = stock.name;
+    _controller.text = stock.code;
     _focusNode.unfocus();
     setState(() => _showResults = false);
     widget.onStockSelected(stock);
