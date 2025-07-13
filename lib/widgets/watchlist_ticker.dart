@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/stock_data_provider.dart';
 import '../models/stock_snapshot.dart';
@@ -84,7 +87,9 @@ class _WatchlistTickerState extends State<WatchlistTicker> {
 
   Widget _buildStockTicker(StockSnapshot snapshot) {
     final isPositive = snapshot.changeSign == '2';
-    final color = isPositive ? Colors.red : Colors.blue;
+    final priceColor = isPositive ? Colors.green : Colors.red;
+    final formattedPrice = _formatKRW(snapshot.price);
+    final formattedChange = _formatKRW(snapshot.change);
 
     return Container(
       width: 200,
@@ -102,44 +107,57 @@ class _WatchlistTickerState extends State<WatchlistTicker> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                snapshot.code,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+          // Logo column
+          buildAvatar(snapshot.code, snapshot.name),
+          const SizedBox(width: 8),
+
+          // Name and code column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  snapshot.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Text(
-                snapshot.name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
+                Text(
+                  snapshot.code,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
+
+          const SizedBox(width: 8),
+
+          // Price and change rate column (in same row)
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                snapshot.price,
-                style: const TextStyle(
+                '${snapshot.changeRate}%',
+                style: TextStyle(
+                  color: priceColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formattedPrice,
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                ),
-              ),
-              Text(
-                '${isPositive ? '+' : ''}${snapshot.change} (${snapshot.changeRate}%)',
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+                  color: priceColor,
                 ),
               ),
             ],
@@ -148,4 +166,44 @@ class _WatchlistTickerState extends State<WatchlistTicker> {
       ),
     );
   }
+
+  String _formatKRW(String value) {
+    try {
+      final number = double.parse(value);
+      return '${NumberFormat('#,###').format(number)} ₩';
+    } catch (e) {
+      return '$value ₩';
+    }
+  }
+}
+
+Widget buildAvatar(String stockCode, String stockName) {
+  final url = 'https://logo.synthfinance.com/ticker/$stockCode';
+
+  return FutureBuilder<http.Response>(
+    future: http.get(Uri.parse(url)),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.done &&
+          snapshot.hasData &&
+          snapshot.data!.statusCode == 200) {
+        final contentType = snapshot.data!.headers['content-type'] ?? '';
+
+        if (contentType.contains('image/svg')) {
+          return CircleAvatar(
+            backgroundColor: Colors.transparent,
+            child:
+                SizedBox(width: 32, height: 32, child: SvgPicture.network(url)),
+          );
+        } else {
+          return CircleAvatar(
+            child: Text(stockName[0]),
+          );
+        }
+      } else {
+        return CircleAvatar(
+          child: Text(stockName[0]),
+        );
+      }
+    },
+  );
 }

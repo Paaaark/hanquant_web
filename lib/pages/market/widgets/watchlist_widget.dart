@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../providers/stock_data_provider.dart';
 import '../../../models/stock_snapshot.dart';
@@ -66,8 +69,11 @@ class _WatchlistWidgetState extends State<WatchlistWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // List of info fields to display
+    // List of info fields to display (excluding Price and Change % as they're default)
     final infoFields = (widget.config['info'] as List<String>?) ?? [];
+    final customFields = infoFields
+        .where((field) => field != 'Price' && field != 'Change %')
+        .toList();
 
     return Stack(
       children: [
@@ -79,13 +85,41 @@ class _WatchlistWidgetState extends State<WatchlistWidget> {
             }
 
             return Column(
-              children: _currentSymbols.map<Widget>((symbol) {
-                final snapshot = provider.getStockSnapshot(symbol);
-                if (snapshot == null) {
-                  return _buildLoadingTicker(symbol, infoFields);
-                }
-                return _buildStockTicker(snapshot, infoFields);
-              }).toList(),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Information fields chips (excluding Price and Change %)
+                if (customFields.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: customFields.map((field) {
+                        return Chip(
+                          label: Text(
+                            field,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          backgroundColor: Colors.blue.shade50,
+                          side: BorderSide(color: Colors.blue.shade200),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                ],
+                // Stock tickers
+                ..._currentSymbols.map<Widget>((symbol) {
+                  final snapshot = provider.getStockSnapshot(symbol);
+                  if (snapshot == null) {
+                    return _buildLoadingTicker(symbol, customFields);
+                  }
+                  return _buildStockTicker(snapshot, customFields);
+                }).toList(),
+              ],
             );
           },
         ),
@@ -110,104 +144,261 @@ class _WatchlistWidgetState extends State<WatchlistWidget> {
     );
   }
 
-  Widget _buildLoadingTicker(String symbol, List<String> infoFields) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        leading: const Icon(Icons.trending_up),
-        title: Row(
-          children: [
-            Text(
-              symbol,
-              style: Theme.of(context).textTheme.subtitle1,
-            ),
-            const SizedBox(width: 8),
-            for (final info in infoFields.take(2)) ...[
-              Flexible(
-                child: Text(
+  Widget _buildLoadingTicker(String symbol, List<String> customFields) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          const Icon(Icons.trending_up),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  symbol,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Text(
                   'Loading...',
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyText2,
+                  style: Theme.of(context).textTheme.caption,
                 ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStockTicker(StockSnapshot snapshot, List<String> infoFields) {
-    final isPositive = snapshot.changeSign == '2';
-    final color = isPositive ? Colors.red : Colors.blue;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        leading: const Icon(Icons.trending_up),
-        title: Row(
-          children: [
-            Text(
-              snapshot.code,
-              style: Theme.of(context).textTheme.subtitle1,
+              ],
             ),
-            const SizedBox(width: 8),
-            for (final info in infoFields.take(2)) ...[
-              Flexible(
-                child: Text(
-                  _getInfoValue(snapshot, info),
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyText2,
-                ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Loading...',
+                    style: Theme.of(context).textTheme.caption,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Loading...',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
+              if (customFields.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                _buildCustomFieldsRow(customFields.take(2).toList(), null),
+                if (customFields.length > 2) ...[
+                  const SizedBox(height: 2),
+                  _buildCustomFieldsRow(
+                      customFields.skip(2).take(2).toList(), null),
+                ],
+              ],
             ],
-          ],
-        ),
-        subtitle: infoFields.length > 2
-            ? Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Row(
-                  children: [
-                    for (final info in infoFields.skip(2).take(3)) ...[
-                      Flexible(
-                        child: Text(
-                          _getInfoValue(snapshot, info),
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.caption,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                  ],
-                ),
-              )
-            : null,
+          ),
+        ],
       ),
     );
   }
 
-  String _getInfoValue(StockSnapshot snapshot, String info) {
+  Widget _buildStockTicker(StockSnapshot snapshot, List<String> customFields) {
+    final isPositive = snapshot.changeSign == '2';
+    final priceColor = isPositive ? Colors.green : Colors.red;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          // Logo column
+          buildAvatar(snapshot.code, snapshot.name),
+          const SizedBox(width: 12),
+
+          // Name and code column
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  snapshot.name,
+                  style: Theme.of(context).textTheme.titleMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  snapshot.code,
+                  style: Theme.of(context).textTheme.caption,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Price, change rate, and custom fields column
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Price and Change Rate in the same row
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${snapshot.changeRate}%',
+                    style: Theme.of(context).textTheme.caption?.copyWith(
+                          color: priceColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatKRW(snapshot.price),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: priceColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ],
+              ),
+
+              // Custom fields in rows of 2
+              if (customFields.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                _buildCustomFieldsRow(customFields.take(2).toList(), snapshot),
+                if (customFields.length > 2) ...[
+                  const SizedBox(height: 2),
+                  _buildCustomFieldsRow(
+                      customFields.skip(2).take(2).toList(), snapshot),
+                ],
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomFieldsRow(List<String> fields, StockSnapshot? snapshot) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: fields.map((field) {
+        final value = snapshot != null
+            ? _getFormattedInfoValue(snapshot, field)
+            : 'Loading...';
+        return Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.caption?.copyWith(
+                  color: Colors.black87,
+                ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  String _getFormattedInfoValue(StockSnapshot snapshot, String info) {
     switch (info) {
-      case 'Price':
-        return snapshot.price;
       case 'Open':
-        return snapshot.open;
+        return _formatKRW(snapshot.open);
       case 'High':
-        return snapshot.high;
+        return _formatKRW(snapshot.high);
       case 'Low':
-        return snapshot.low;
+        return _formatKRW(snapshot.low);
       case 'Volume':
-        return snapshot.volume;
-      case 'Change %':
-        return '${snapshot.changeRate}%';
+        return _formatVolume(snapshot.volume);
+      case 'SecurityType':
+        return snapshot.securityType;
+      case 'AskPrice':
+        return _formatKRW(snapshot.askPrice);
+      case 'BidPrice':
+        return _formatKRW(snapshot.bidPrice);
+      case 'AskVolume':
+        return _formatVolume(snapshot.askVolume);
+      case 'BidVolume':
+        return _formatVolume(snapshot.bidVolume);
+      case 'TotalAskVolume':
+        return _formatVolume(snapshot.totalAskVolume);
+      case 'TotalBidVolume':
+        return _formatVolume(snapshot.totalBidVolume);
+      case 'TotalTradedValue':
+        return _formatLargeNumber(snapshot.totalTradedValue);
       default:
         return '';
     }
   }
+
+  String _formatKRW(String value) {
+    try {
+      final number = double.parse(value);
+      return '${NumberFormat('#,###').format(number)} ₩';
+    } catch (e) {
+      return '$value ₩';
+    }
+  }
+
+  String _formatVolume(String value) {
+    try {
+      final number = double.parse(value);
+      if (number >= 1000000) {
+        return '${(number / 1000000).toStringAsFixed(1)}M';
+      } else if (number >= 1000) {
+        return '${(number / 1000).toStringAsFixed(1)}K';
+      }
+      return NumberFormat('#,###').format(number);
+    } catch (e) {
+      return value;
+    }
+  }
+
+  String _formatLargeNumber(String value) {
+    try {
+      final number = double.parse(value);
+      if (number >= 1000000000000) {
+        // Trillion
+        return '${(number / 1000000000000).toStringAsFixed(3)} T';
+      } else if (number >= 1000000000) {
+        // Billion
+        return '${(number / 1000000000).toStringAsFixed(3)} B';
+      } else if (number >= 1000000) {
+        // Million
+        return '${(number / 1000000).toStringAsFixed(3)} M';
+      } else if (number >= 1000) {
+        // Thousand
+        return '${(number / 1000).toStringAsFixed(3)} K';
+      }
+      return NumberFormat('#,###').format(number);
+    } catch (e) {
+      return value;
+    }
+  }
+}
+
+Widget buildAvatar(String stockCode, String stockName) {
+  final url = 'https://logo.synthfinance.com/ticker/$stockCode';
+
+  return FutureBuilder<http.Response>(
+    future: http.get(Uri.parse(url)),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.done &&
+          snapshot.hasData &&
+          snapshot.data!.statusCode == 200) {
+        final contentType = snapshot.data!.headers['content-type'] ?? '';
+
+        if (contentType.contains('image/svg')) {
+          return CircleAvatar(
+            backgroundColor: Colors.transparent,
+            child:
+                SizedBox(width: 32, height: 32, child: SvgPicture.network(url)),
+          );
+        } else {
+          return CircleAvatar(
+            child: Text(stockName[0]),
+          );
+        }
+      } else {
+        return CircleAvatar(
+          child: Text(stockName[0]),
+        );
+      }
+    },
+  );
 }
