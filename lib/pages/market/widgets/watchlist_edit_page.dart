@@ -197,14 +197,59 @@ class _WatchlistEditPageState extends ConsumerState<WatchlistEditPage> {
     Navigator.pop(context);
   }
 
+  void _showDeleteConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Watchlist'),
+        content: const Text(
+            'Are you sure you want to delete this watchlist? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _deleteWidget();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteWidget() {
+    final manager = ref.read(widgetManagerProvider.notifier);
+    manager.deleteWidget(widget.widgetId);
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _onWillPop();
+        if (shouldPop) {
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Edit Watchlist'),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _showDeleteConfirmation,
+              color: Colors.red,
+            ),
             IconButton(
               icon: const Icon(Icons.save),
               onPressed: _saveChanges,
@@ -298,14 +343,10 @@ class _WatchlistEditPageState extends ConsumerState<WatchlistEditPage> {
                           child: Row(
                             children: [
                               Expanded(
-                                child: SizedBox(
-                                  height: 48, // Fixed height for search field
-                                  child: StockSearchField(
-                                    initialValue:
-                                        _tickerControllers[index].text,
-                                    onStockSelected: (stock) =>
-                                        _onStockSelected(index, stock),
-                                  ),
+                                child: StockSearchField(
+                                  initialValue: _tickerControllers[index].text,
+                                  onStockSelected: (stock) =>
+                                      _onStockSelected(index, stock),
                                 ),
                               ),
                               if (_tickerControllers.length > 1)

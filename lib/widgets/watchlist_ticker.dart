@@ -89,7 +89,6 @@ class _WatchlistTickerState extends State<WatchlistTicker> {
     final isPositive = snapshot.changeSign == '2';
     final priceColor = isPositive ? Colors.green : Colors.red;
     final formattedPrice = _formatKRW(snapshot.price);
-    final formattedChange = _formatKRW(snapshot.change);
 
     return Container(
       width: 200,

@@ -75,6 +75,11 @@ class _WatchlistWidgetState extends State<WatchlistWidget> {
         .where((field) => field != 'Price' && field != 'Change %')
         .toList();
 
+    // If no tickers, don't show the widget
+    if (_currentSymbols.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     return Stack(
       children: [
         // Main content: vertical list of tickers
@@ -87,30 +92,37 @@ class _WatchlistWidgetState extends State<WatchlistWidget> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Information fields chips (excluding Price and Change %)
-                if (customFields.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Wrap(
-                      spacing: 4,
-                      runSpacing: 4,
-                      children: customFields.map((field) {
-                        return Chip(
-                          label: Text(
-                            field,
-                            style: const TextStyle(fontSize: 12),
+                // Information fields chips or title
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: customFields.isNotEmpty
+                      ? Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: customFields.map((field) {
+                            return Chip(
+                              label: Text(
+                                field,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              backgroundColor: Colors.blue.shade50,
+                              side: BorderSide(color: Colors.blue.shade200),
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            );
+                          }).toList(),
+                        )
+                      : const Text(
+                          'Watchlist Ticker',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
                           ),
-                          backgroundColor: Colors.blue.shade50,
-                          side: BorderSide(color: Colors.blue.shade200),
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          visualDensity: VisualDensity.compact,
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                ],
+                        ),
+                ),
+                const Divider(height: 1),
                 // Stock tickers
                 ..._currentSymbols.map<Widget>((symbol) {
                   final snapshot = provider.getStockSnapshot(symbol);

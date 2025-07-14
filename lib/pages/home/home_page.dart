@@ -15,6 +15,16 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // Cache for data to prevent refetching
+  static List<IndexSummary>? _cachedIndices;
+  static List<StockSummary>? _cachedVolumeStocks;
+  static List<StockSummary>? _cachedFluctuationStocks;
+  static List<StockSummary>? _cachedMarketCapStocks;
+  static DateTime? _lastFetchTime;
+
+  // Cache duration (5 minutes)
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
   late Future<List<IndexSummary>> _indicesFuture;
   late Future<void> _allTrendingStocksFuture;
 
@@ -31,8 +41,33 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _indicesFuture = _fetchIndices();
-    _allTrendingStocksFuture = _fetchAllTrendingStocks();
+    _initializeData();
+  }
+
+  void _initializeData() {
+    // Check if we have valid cached data
+    final now = DateTime.now();
+    final hasValidCache = _lastFetchTime != null &&
+        now.difference(_lastFetchTime!) < _cacheDuration &&
+        _cachedIndices != null &&
+        _cachedVolumeStocks != null &&
+        _cachedFluctuationStocks != null &&
+        _cachedMarketCapStocks != null;
+
+    if (hasValidCache) {
+      // Use cached data
+      setState(() {
+        _volumeStocks = _cachedVolumeStocks!;
+        _fluctuationStocks = _cachedFluctuationStocks!;
+        _marketCapStocks = _cachedMarketCapStocks!;
+      });
+      _indicesFuture = Future.value(_cachedIndices!);
+      _allTrendingStocksFuture = Future.value();
+    } else {
+      // Fetch fresh data
+      _indicesFuture = _fetchIndices();
+      _allTrendingStocksFuture = _fetchAllTrendingStocks();
+    }
   }
 
   Future<List<IndexSummary>> _fetchIndices() async {
@@ -43,6 +78,11 @@ class _HomePageState extends State<HomePage> {
         results.add(index);
       } catch (_) {}
     }
+
+    // Cache the results
+    _cachedIndices = results;
+    _lastFetchTime = DateTime.now();
+
     return results;
   }
 
@@ -50,6 +90,12 @@ class _HomePageState extends State<HomePage> {
     final volume = await ApiService.fetchTopTrendingStocks("volume");
     final fluctuation = await ApiService.fetchTopTrendingStocks("fluctuation");
     final marketCap = await ApiService.fetchTopTrendingStocks("market-cap");
+
+    // Cache the results
+    _cachedVolumeStocks = volume;
+    _cachedFluctuationStocks = fluctuation;
+    _cachedMarketCapStocks = marketCap;
+    _lastFetchTime = DateTime.now();
 
     setState(() {
       _volumeStocks = volume;
@@ -152,6 +198,22 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTrendingStocks() {
+    // If we have cached data, show it immediately
+    if (_volumeStocks.isNotEmpty ||
+        _fluctuationStocks.isNotEmpty ||
+        _marketCapStocks.isNotEmpty) {
+      return ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _currentStocks.length,
+        separatorBuilder: (_, __) => const Divider(height: 16),
+        itemBuilder: (context, index) {
+          return _StockListItem(stock: _currentStocks[index]);
+        },
+      );
+    }
+
+    // Otherwise, show loading state
     return FutureBuilder<void>(
         future: _allTrendingStocksFuture,
         builder: (context, snapshot) {

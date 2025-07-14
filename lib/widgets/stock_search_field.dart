@@ -100,6 +100,9 @@ class _StockSearchFieldState extends State<StockSearchField> {
             labelText: 'Search Stocks',
             border: OutlineInputBorder(),
             prefixIcon: Icon(Icons.search),
+            floatingLabelBehavior: FloatingLabelBehavior.never,
+            isDense: true,
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           onChanged: _onSearchChanged,
           onTap: () {
