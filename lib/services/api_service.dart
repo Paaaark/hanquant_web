@@ -4,7 +4,7 @@ import '../models/index_summary.dart';
 import '../models/stock_summary.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://192.168.45.188:8080';
+  static const _baseUrl = 'http://192.168.45.178:8080';
 
   // Fetch index summary by index code
   static Future<IndexSummary> fetchIndexSummary(String indexCode) async {
@@ -51,6 +51,39 @@ class ApiService {
       }).toList();
     } else {
       throw Exception('Failed to load trending stocks');
+    }
+  }
+
+  // Login method
+  static Future<Map<String, dynamic>> login(
+      String username, String password) async {
+    final url = Uri.parse('$_baseUrl/auth/login');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['error'] ?? 'Login failed');
+    }
+  }
+
+  // Register method
+  static Future<void> register(String username, String password) async {
+    final url = Uri.parse('$_baseUrl/auth/register');
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    if (response.statusCode == 201) {
+      return;
+    } else {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error'] ?? 'Registration failed');
     }
   }
 }

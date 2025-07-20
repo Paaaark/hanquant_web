@@ -5,6 +5,7 @@ import 'package:provider/provider.dart' as provider;
 import 'app/app.dart';
 import 'package:hanquant_frontend/models/market_widget_model.dart';
 import 'providers/stock_data_provider.dart';
+import 'providers/auth_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +19,7 @@ Future<void> main() async {
     provider.MultiProvider(
       providers: [
         provider.ChangeNotifierProvider(create: (_) => StockDataProvider()),
+        provider.ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: const ProviderScope(
         child: MyApp(),
