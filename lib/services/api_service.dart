@@ -86,4 +86,70 @@ class ApiService {
       throw Exception(data['error'] ?? 'Registration failed');
     }
   }
+
+  // List linked accounts
+  static Future<List<Map<String, dynamic>>> getLinkedAccounts(
+      String token) async {
+    final url = Uri.parse('$_baseUrl/accounts');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error']?['message'] ?? 'Failed to fetch accounts');
+    }
+  }
+
+  // Link a new bank account
+  static Future<Map<String, dynamic>> linkBankAccount({
+    required String token,
+    required String accountId,
+    required String appKey,
+    required String appSecret,
+    required String cano,
+    bool? isMock,
+  }) async {
+    final url = Uri.parse('$_baseUrl/accounts');
+    final body = <String, dynamic>{
+      'account_id': accountId,
+      'app_key': appKey,
+      'app_secret': appSecret,
+      'cano': cano,
+    };
+    if (isMock != null) body['is_mock'] = isMock;
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode(body),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 201) {
+      return data;
+    } else {
+      throw Exception(data['error']?['message'] ?? 'Failed to link account');
+    }
+  }
+
+  // Delete a linked bank account
+  static Future<void> deleteBankAccount({
+    required String token,
+    required int id,
+  }) async {
+    final url = Uri.parse('$_baseUrl/accounts/$id');
+    final response = await http.delete(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 204) {
+      final data = jsonDecode(response.body);
+      throw Exception(data['error']?['message'] ?? 'Failed to delete account');
+    }
+  }
 }
