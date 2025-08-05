@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../managers/widget_manager.dart';
 import '../../../models/stock_listing.dart';
 import '../../../widgets/stock_search_field.dart';
+import "package:hanquant_frontend/widgets/watchlist_ticker.dart";
 
 // TODO: In the future, we can expand this to support searching/autocomplete for tickers
 class WatchlistEditPage extends ConsumerStatefulWidget {

@@ -4,7 +4,7 @@ import '../models/index_summary.dart';
 import '../models/stock_summary.dart';
 
 class ApiService {
-  static const _baseUrl = 'http://192.168.45.178:8080';
+  static const _baseUrl = 'http://43.203.29.9:8080';
 
   // Fetch index summary by index code
   static Future<IndexSummary> fetchIndexSummary(String indexCode) async {
@@ -150,6 +150,55 @@ class ApiService {
     if (response.statusCode != 204) {
       final data = jsonDecode(response.body);
       throw Exception(data['error']?['message'] ?? 'Failed to delete account');
+    }
+  }
+
+  // Fetch portfolio for a linked account
+  static Future<Map<String, dynamic>> getPortfolio({
+    required String token,
+    required String accountId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/portfolio?account_id=$accountId');
+    final response = await http.get(
+      url,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['error']?['message'] ?? 'Failed to fetch portfolio');
+    }
+  }
+
+  // Server management methods
+  static const String _lambdaUrl =
+      'https://lmd3dvmg5pehw7xrynnqdrbmga0rlmjj.lambda-url.ap-northeast-2.on.aws/';
+
+  static Future<String> getServerStatus() async {
+    final url = Uri.parse('$_lambdaUrl?action=status');
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['state'] ?? 'unknown';
+    } else {
+      throw Exception('Failed to get server status');
+    }
+  }
+
+  static Future<void> startServer() async {
+    final url = Uri.parse('$_lambdaUrl?action=wake');
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to start server');
+    }
+  }
+
+  static Future<void> stopServer() async {
+    final url = Uri.parse('$_lambdaUrl?action=stop');
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to stop server');
     }
   }
 }

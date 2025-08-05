@@ -336,9 +336,16 @@ Widget buildAvatar(String stockCode, String stockName) {
         if (contentType.contains('image/svg')) {
           return CircleAvatar(
             backgroundColor: Colors.transparent,
+            radius: 16,
             child:
-                SizedBox(width: 32, height: 32, child: SvgPicture.network(url)),
+                SizedBox(width: 50, height: 50, child: SvgPicture.network(url)),
           );
+          // return ClipOval(
+          //   child: SizedBox(
+          //       width: 32,
+          //       height: 32,
+          //       child: SvgPicture.network(url, fit: BoxFit.cover)),
+          // );
         } else {
           return CircleAvatar(
             child: Text(stockName[0]),

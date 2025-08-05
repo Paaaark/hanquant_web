@@ -38,8 +38,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   final List<Widget> _pages = [
     const HomePage(),
     const MarketPage(),
-    const PortfolioPage(),
     const StrategyPage(),
+    const PortfolioPage(),
     const ProfilePage(),
   ];
 

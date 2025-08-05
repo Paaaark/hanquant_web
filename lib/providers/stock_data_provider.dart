@@ -24,7 +24,7 @@ class StockDataProvider extends ChangeNotifier {
     _initCompleter = Completer<void>();
     try {
       print('Initializing StockDataProvider...');
-      await _stockDataService.initialize('ws://192.168.45.178:8080/ws/stocks');
+      await _stockDataService.initialize('ws://43.203.29.9:8080/ws/stocks');
       _stockDataService.stockDataStream.listen((data) {
         print('Received stock data update: ${data.length} stocks');
         _stockData = data;
